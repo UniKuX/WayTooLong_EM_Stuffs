@@ -1,8 +1,8 @@
 #!/bin/csh
 
 # Set the source and destination directories
-set source_dir = "/NFShp2sas/cryosparc_Andy/CS-s28d/J39/motioncorrected"
-set dest_dir = "/NFShp2sas/Andy_relion/MC_MRC_S28D_from_Cs_J39"
+set source_dir = "The directory of your big ass data set"
+set dest_dir = "Where you want to put the symbolic links"
 
 # Check if source directory exists
 if (! -d $source_dir) then
