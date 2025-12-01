@@ -1,0 +1,185 @@
+Bootstrap: docker
+From: ubuntu:22.04
+Stage: devel
+
+# environment vars needed by conda
+%environment
+    export CONDA_DIR="/opt/miniconda-latest"
+    export PATH="/opt/miniconda-latest/bin:$PATH"
+    export DEBIAN_FRONTEND=noninteractive
+
+# files
+%files
+    ctffind-4.1.14.tar.gz /root/ctffind-4.1.14.tar.gz
+
+# install relion requirements
+# openMPI
+%post
+    apt-get update && apt-get install -y
+    apt-get install -y build-essential \
+        mpi-default-bin \
+        mpi-default-dev
+        # openmpi-bin \
+        # openmpi-doc \
+        # libopenmpi-dev
+
+# wxWidgets / ctffind
+    apt-get install -y libwxgtk3.0-gtk3-dev
+        # libwxgtk3.0-gtk3-dbg \
+        # fftw3
+
+# others
+    apt-get install -y ghostscript \
+        libxft-dev \
+        libx11-dev \
+        libtiff-dev \
+        libpng-dev \
+        libfftw3-dev \
+        cmake \
+        git \
+        wget
+
+# install cuda
+    wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
+    dpkg -i cuda-keyring_1.1-1_all.deb
+    apt-get update
+    apt-get -y install cuda-12-5
+
+# install conda environment
+    apt-get install -y -q --no-install-recommends \
+        bzip2 \
+        ca-certificates \
+        curl
+    rm -rf /var/lib/apt/lists/*
+
+# Install dependencies.
+    export PATH="/opt/miniconda-latest/bin:$PATH"
+    echo "Downloading Miniconda installer ..."
+    conda_installer="/tmp/miniconda.sh"
+    curl -fsSL -o "$conda_installer" https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    bash "$conda_installer" -b -p /opt/miniconda-latest
+    rm -f "$conda_installer"
+    conda update -yq -nbase conda
+# Prefer packages in conda-forge
+    conda config --system --prepend channels conda-forge
+# Packages in lower-priority channels not considered if a package with the same
+# name exists in a higher priority channel. Can dramatically speed up installations.
+# Conda recommends this as a default
+# https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-channels.html
+    conda config --set channel_priority strict
+    conda config --system --set auto_update_conda false
+    conda config --system --set show_channel_urls true
+# Enable `conda activate`
+    conda init bash
+#     conda env create -f /opt/conda/environment.yml
+    conda create -n relion-test -y
+    # conda install -y  --name base \
+        # "nipype" \
+        # "notebook"
+# Clean up
+    sync && conda clean --all --yes && sync
+    rm -rf ~/.cache/pip/*
+
+# install ctffind 4.1.14
+    cd /root
+    tar -xzf ctffind-4.1.14.tar.gz
+    mkdir /root/ctffind-4.1.14/build
+    cd /root/ctffind-4.1.14/build
+    /root/ctffind-4.1.14/configure
+    make
+    make install
+
+# install relion
+    cd /opt
+    git clone https://github.com/3dem/relion.git
+    cd /opt/relion
+    git checkout ver5.0
+    conda env create -f /opt/relion/environment.yml
+    ls /opt/relion
+    rm -rf /opt/relion/build
+    mkdir /opt/relion/build
+    mkdir /opt/torch
+    cd /opt/relion/build
+    # GPU
+    cmake -DTORCH_HOME_PATH=/opt/torch -DCUDA=ON -DCUDA_ARCH=80 -DFORCE_OWN_FFTW=ON -DAMDFFTW=ON -DFETCH_WEIGHTS=OFF -DCMAKE_INSTALL_PREFIX=/usr/local/ /opt/relion/
+    # CPU version
+    # cmake -DTORCH_HOME_PATH=/opt/torch -DALTCPU=ON -DFORCE_OWN_FFTW=ON -DAMDFFTW=ON -DFETCH_WEIGHTS=OFF -DCMAKE_INSTALL_PREFIX=/usr/local/ /opt/relion/
+    make
+    make install
+
+
+Bootstrap: docker
+From: ubuntu:22.04
+Stage: final
+
+# environment vars needed by conda
+%environment
+    export CONDA_DIR="/opt/miniconda-latest"
+    export PATH="/opt/miniconda-latest/bin:$PATH"
+    export DEBIAN_FRONTEND=noninteractive
+
+# files 
+%files from devel
+    /usr/local/bin/* /usr/local/bin/
+    /usr/local/lib/* /usr/local/lib/
+
+# install relion requirements
+# openMPI
+%post
+    apt-get update && apt-get install -y
+    apt-get install -y build-essential \
+        mpi-default-bin \
+        mpi-default-dev
+        # openmpi-bin \
+        # openmpi-doc \
+        # libopenmpi-dev
+
+# wxWidgets / ctffind
+    apt-get install -y libwxgtk3.0-gtk3-dev
+        # libwxgtk3.0-gtk3-dbg \
+        # fftw3
+
+# others
+    apt-get install -y ghostscript \
+        libxft-dev \
+        libx11-dev \
+        libtiff-dev \
+        libpng-dev \
+        libfftw3-dev \
+        cmake \
+        git \
+        wget
+
+# install cuda
+    wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
+    dpkg -i cuda-keyring_1.1-1_all.deb
+    apt-get update
+    apt-get -y install cuda-12-5
+
+# install conda environment
+    apt-get install -y -q --no-install-recommends \
+        bzip2 \
+        ca-certificates \
+        curl
+    rm -rf /var/lib/apt/lists/*
+
+# Install dependencies.
+    export PATH="/opt/miniconda-latest/bin:$PATH"
+    echo "Downloading Miniconda installer ..."
+    conda_installer="/tmp/miniconda.sh"
+    curl -fsSL -o "$conda_installer" https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    bash "$conda_installer" -b -p /opt/miniconda-latest
+    rm -f "$conda_installer"
+    conda update -yq -nbase conda
+
+# install relion
+    cd /opt
+    git clone https://github.com/3dem/relion.git
+    cd /opt/relion
+    git checkout ver5.0
+    conda env create -f /opt/relion/environment.yml
+
+    mkdir /opt/Movies
+    mkdir /users
+    useradd --no-user-group --create-home --shell /bin/bash nonroot
+

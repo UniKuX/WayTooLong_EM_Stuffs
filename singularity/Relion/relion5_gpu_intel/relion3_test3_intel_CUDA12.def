@@ -1,0 +1,79 @@
+Bootstrap: docker
+From: nvidia/cuda:12.5.1-devel-ubuntu24.04
+
+
+%post
+    # Apt installs
+    ; apt-get update && \
+    ; apt-get install -y \
+    ;     git cmake wget build-essential mpi-default-bin mpi-default-dev libfftw3-dev libx11-dev fftw3 && \
+    ; apt-get clean && \
+    ; rm -rf /var/lib/apt/lists/*
+
+    apt-get update && apt-get upgrade -y
+    apt-get install -y build-essential \
+        pkg-config
+    apt update
+
+    apt install software-properties-common -y
+    add-apt-repository universe
+    apt-get install -y openmpi-bin \
+        openmpi-doc \
+        libopenmpi-dev
+
+    # wxWidgets / ctffind
+    apt-get install -y libwxgtk3.0-gtk3-dev
+        # libwxgtk3.0-gtk3-dbg \
+        # fftw3
+
+    # others
+    apt-get install -y ghostscript \
+        libxft-dev \
+        libx11-dev \
+        libtiff-dev \
+        libpng-dev \
+        libfftw3-dev \
+        cmake \
+        git \
+        wget \
+        fftw3
+
+    # install cuda
+    wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
+    dpkg -i cuda-keyring_1.1-1_all.deb
+    apt-get update
+    DEBIAN_FRONTEND=noninteractive apt-get -y install cuda-12-5
+
+    # Set working directory
+
+    cd /opt
+
+    # Download git repo for relion5.0 stable release
+    git clone -b '3.0.8' --single-branch --depth 1 https://github.com/3dem/relion.git
+
+    cd relion
+
+    # Turn off weights download, will be mounted separately
+    mkdir build && cd build
+    cmake -DCUDA_ARCH=80 .. \
+    make -j 4
+
+
+%environment
+    export PATH=/opt/bin:$PATH
+    export LD_LIBRARY_PATH=/usr/local/cuda-12.5/lib64:$LD_LIBRARY_PATH
+
+
+%runscript
+    echo "Running with host CUDA"
+    exec "$@"
+
+%labels
+    ContainerMaintainer "ARC The Rosalind Franklin Institute"
+    Author "RELION Team, MRC LMB"
+    Software "RELION 5.0 Stable release (Dec 2024)"
+
+# %help
+#     This container uses host-installed CUDA.
+#     Run with:
+#         apptainer run --nv cuda_host.sif

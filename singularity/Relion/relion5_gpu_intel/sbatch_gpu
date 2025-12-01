@@ -1,0 +1,38 @@
+#!/usr/bin/python3
+
+import re
+import subprocess
+import sys
+import os
+
+def replace_run_cmd(submit_file):
+    with open(submit_file, 'r') as file:
+        script_contents = file.read()
+
+    print("\n\nRelion templated file:\n\n", script_contents, "\n\n\n")
+    cmd = re.search('(?<=`)[^`]*(?=`)', script_contents)
+
+    command = subprocess.run(str(cmd.group(0)), shell=True, capture_output=True, text=True)
+
+    sing_command = ['singularity exec --nv --bind ', os.environ['SINGULARITY_BIND'],  '/software/containers/singularity/relion/relion5_gpu_intel.sif']
+
+    if 'mpiexec' in script_contents:
+        full_command = ' '.join(sing_command) + ' mpiexec ' + command.stdout.rstrip()
+        new_submit_file = script_contents.replace("mpiexec `" + cmd.group(0) + "`", full_command)
+    else:
+        full_command = ' '.join(sing_command) + command.stdout.rstrip()
+        new_submit_file = script_contents.replace("`" + cmd.group(0) + "`", full_command)
+
+    present_working_dir = subprocess.run("pwd", shell=True, capture_output=True, text=True)
+    new_submit_file = new_submit_file.replace("CREATE_PWD", present_working_dir.stdout.strip())
+    print("\n\nThe file that will be submitted to the cluster:\n\n", new_submit_file, "\n\n\n")
+
+    with open(submit_file, 'w') as new_file:
+        new_file.write(new_submit_file)
+
+if __name__ == "__main__":
+    file_path = sys.argv[1]
+    replace_run_cmd(file_path)
+    ssh_command = "ssh hpc.create.kcl.ac.uk 'sbatch' < " + file_path
+    print("ssh_command is:", ssh_command)
+    subprocess.run(ssh_command, shell=True, capture_output=True)
