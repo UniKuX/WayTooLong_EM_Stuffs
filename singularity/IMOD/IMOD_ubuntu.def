@@ -1,0 +1,36 @@
+Bootstrap: docker
+From: ubuntu:22.04
+
+%post
+    apt-get update && apt-get upgrade -y
+    apt-get install -y build-essential \
+        pkg-config
+    apt update
+
+    apt install software-properties-common -y
+    add-apt-repository universe
+    apt-get install -y openmpi-bin \
+        openmpi-doc \
+        libopenmpi-dev
+
+# others
+    apt-get install -y ghostscript \
+        libxft-dev \
+        libx11-dev \
+        libtiff-dev \
+        libpng-dev \
+        libfftw3-dev \
+        cmake \
+        git \
+        wget \
+        fftw3 \
+        vim \
+        python3 \
+        python3-pip
+
+# install cuda
+    wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
+    dpkg -i cuda-keyring_1.1-1_all.deb
+    apt-get update
+    DEBIAN_FRONTEND=noninteractive apt-get -y install cuda-12-5
+
