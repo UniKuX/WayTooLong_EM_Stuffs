@@ -2,35 +2,42 @@ Bootstrap: docker
 From: ubuntu:22.04
 
 %post
-    apt-get update && apt-get upgrade -y
-    apt-get install -y build-essential \
-        pkg-config
-    apt update
-
-    apt install software-properties-common -y
-    add-apt-repository universe
-    apt-get install -y openmpi-bin \
-        openmpi-doc \
-        libopenmpi-dev
-
-# others
-    apt-get install -y ghostscript \
-        libxft-dev \
-        libx11-dev \
-        libtiff-dev \
-        libpng-dev \
-        libfftw3-dev \
-        cmake \
-        git \
+    apt-get update && apt-get install -y \
         wget \
-        fftw3 \
-        vim \
-        python3 \
-        python3-pip
+        ca-certificates \
+        openjdk-8-jdk \
+        libglu1-mesa \
+        libgl1-mesa-glx \
+        libsm6 \
+        libice6 \
+        libx11-6 \
+        libxext6 \
+        libxrender1 \
+        libxrandr2 \
+        libxi6 \
+        libxcb1 \
+        libxkbcommon0 \
+        libx11-xcb1 \
+        libfontconfig1 \
+        libfreetype6 \
+        libxv1 \
+        libxxf86vm1 \
+        libxcursor1 \
+        libxinerama1 \
+        mesa-utils \
+        x11-apps \
+        sudo
 
-# install cuda
-    wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
-    dpkg -i cuda-keyring_1.1-1_all.deb
-    apt-get update
-    DEBIAN_FRONTEND=noninteractive apt-get -y install cuda-12-5
+    cd /tmp
+    wget --no-check-certificate https://bio3d.colorado.edu/imod/AMD64-RHEL5/imod_5.1.9_RHEL8-64_CUDA12.0.sh
+    chmod +x imod_5.1.9_RHEL8-64_CUDA12.0.sh
+    ./imod_5.1.9_RHEL8-64_CUDA12.0.sh 
+    rm imod_5.1.9_RHEL8-64_CUDA12.0.sh
 
+%environment
+    export PATH=/usr/local/imod_5.1.9/bin:$PATH
+    export LD_LIBRARY_PATH=/usr/local/imod_5.1.9/lib:$LD_LIBRARY_PATH
+    export QT_QPA_PLATFORM=xcb
+    export DISPLAY=${DISPLAY}
+    export XAUTHORITY=${XAUTHORITY:-/root/.Xauthority}
+    export LIBGL_ALWAYS_INDIRECT=1
